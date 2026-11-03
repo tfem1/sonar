@@ -33,7 +33,8 @@ else:
     import termios
     import tty
 
-VERSION = "1.0.0"
+VERSION = "1.1.0"
+UPDATE_URL = "https://raw.githubusercontent.com/tfem1/sonar/main/sonar.py"
 
 # ── themes:begin ──
 # Shared theme table (waves / tsunami / sonar).
@@ -2563,6 +2564,61 @@ def snapshot(app):
     sys.stdout.flush()
 
 
+def self_update():
+    """--update: replace this file with the latest sonar.py from GitHub."""
+    import hashlib
+    import urllib.request
+
+    target = os.path.realpath(os.path.abspath(__file__))
+    url = os.environ.get("SONAR_UPDATE_URL", UPDATE_URL)
+    if os.path.isdir(os.path.join(os.path.dirname(target), ".git")):
+        print("sonar: this copy is a git clone, update it with:  git pull")
+        return 1
+    print("checking %s" % url)
+    try:
+        req = urllib.request.Request(url, headers={"User-Agent": "sonar/" + VERSION, "Cache-Control": "no-cache"})
+        with urllib.request.urlopen(req, timeout=20) as r:
+            new = r.read()
+    except Exception as e:  # network, DNS, TLS, HTTP errors
+        sys.stderr.write("sonar: download failed: %s\n" % e)
+        return 1
+    m = re.search(rb'^VERSION = "([^"]+)"', new, re.M)
+    try:
+        compile(new, "sonar.py", "exec")
+    except (SyntaxError, ValueError):
+        m = None
+    if not m or b"def main(" not in new:
+        sys.stderr.write("sonar: the downloaded file is not a valid sonar.py, nothing was changed\n")
+        return 1
+    new_version = m.group(1).decode()
+    with open(target, "rb") as f:
+        old = f.read()
+    if hashlib.sha256(old.replace(b"\r\n", b"\n")).digest() == hashlib.sha256(new.replace(b"\r\n", b"\n")).digest():
+        print("sonar %s is already up to date" % VERSION)
+        return 0
+    tmp = target + ".new"
+    try:
+        with open(tmp, "wb") as f:
+            f.write(new)
+        try:
+            os.chmod(tmp, os.stat(target).st_mode)
+        except OSError:
+            pass
+        os.replace(tmp, target)
+    except OSError as e:
+        try:
+            os.remove(tmp)
+        except OSError:
+            pass
+        sys.stderr.write("sonar: cannot write %s: %s\n" % (target, e.strerror))
+        return 1
+    if new_version != VERSION:
+        print("sonar updated: %s -> %s" % (VERSION, new_version))
+    else:
+        print("sonar %s updated to the latest version" % VERSION)
+    return 0
+
+
 def list_themes(current, color):
     out = []
     for cat, names in theme_categories():
@@ -2591,12 +2647,15 @@ def parse_args(argv):
                     help="refresh interval, 0.25 to 5 (default: 1)")
     ap.add_argument("--no-color", action="store_true", help="disable colors (also honors NO_COLOR)")
     ap.add_argument("--once", action="store_true", help="print a single snapshot and exit")
+    ap.add_argument("--update", action="store_true", help="update sonar to the latest version from GitHub")
     ap.add_argument("-V", "--version", action="version", version="sonar " + VERSION)
     return ap.parse_args(argv)
 
 
 def main(argv=None):
     args = parse_args(sys.argv[1:] if argv is None else argv)
+    if args.update:
+        return self_update()
     color = not args.no_color and not os.environ.get("NO_COLOR")
     theme = resolve_theme(args.theme)
     if args.theme and args.theme not in TABLE:

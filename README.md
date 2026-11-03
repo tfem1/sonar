@@ -60,6 +60,8 @@ You can also start with a theme directly: `sonar -t volcano`.
 
 Press `?` anytime to see all the keys.
 
+**Update:** `sonar --update` downloads the latest version.
+
 ## Gallery
 
 | | |

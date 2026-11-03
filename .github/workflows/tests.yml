@@ -55,7 +55,7 @@ jobs:
           git clone https://github.com/tfem1/sonar && cd sonar
           git checkout -q "$GITHUB_SHA"
           ./install.sh
-          bash -ic 'sonar -V && sonar --once --no-color | head -3'
+          bash -ic 'sonar -V && sonar --once --no-color | head -3 && sonar --update'
           ./install.sh --uninstall
       - name: Linux · one-line install (curl | sh)
         if: runner.os == 'Linux'
@@ -95,6 +95,8 @@ jobs:
           $env:SONAR_REF = $env:GITHUB_SHA
           irm "https://raw.githubusercontent.com/tfem1/sonar/$env:GITHUB_SHA/install.ps1" | iex
           sonar -V
+          if ($LASTEXITCODE) { exit 1 }
+          sonar --update
           if ($LASTEXITCODE) { exit 1 }
           $env:SONAR_UNINSTALL = 1
           irm "https://raw.githubusercontent.com/tfem1/sonar/$env:GITHUB_SHA/install.ps1" | iex

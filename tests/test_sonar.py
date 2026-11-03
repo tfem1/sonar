@@ -294,11 +294,68 @@ class Cli(unittest.TestCase):
         self.assertEqual(r.returncode, 0, r.stderr)
         self.assertNotIn(";38;2;", r.stdout)
         self.assertEqual(len(r.stdout.splitlines()), 24)
-        self.assertIn("sonar 1.0.0", self.run_cli("-V").stdout)
+        self.assertIn("sonar " + sonar.VERSION, self.run_cli("-V").stdout)
         self.assertIn("tsunami", self.run_cli("-l").stdout)
         self.assertEqual(self.run_cli("-t", "nope", "--once").returncode, 2)
         self.assertEqual(self.run_cli("-i", "9", "--once").returncode, 2)
         self.assertIn(";38;2;", self.run_cli("--once", "-t", "ember", env={"COLUMNS": "90", "LINES": "28"}).stdout)
+
+
+class Update(unittest.TestCase):
+    """sonar --update against local file:// URLs (no network needed)."""
+
+    def setUp(self):
+        import pathlib
+        self.d = tempfile.mkdtemp()
+        self.installed = os.path.join(self.d, "bin", "sonar.py")
+        os.makedirs(os.path.dirname(self.installed))
+        with open(SONAR, "rb") as f:
+            self.current = f.read()
+        with open(self.installed, "wb") as f:
+            f.write(self.current)
+        self.uri = lambda p: pathlib.Path(p).as_uri()
+
+    def tearDown(self):
+        import shutil
+        shutil.rmtree(self.d, ignore_errors=True)
+
+    def update(self, remote_bytes):
+        remote = os.path.join(self.d, "remote.py")
+        with open(remote, "wb") as f:
+            f.write(remote_bytes)
+        r = subprocess.run([sys.executable, self.installed, "--update"], capture_output=True, text=True,
+                           env=dict(os.environ, SONAR_UPDATE_URL=self.uri(remote)), timeout=30)
+        with open(self.installed, "rb") as f:
+            return r, f.read()
+
+    def test_already_up_to_date(self):
+        r, after = self.update(self.current)
+        self.assertEqual(r.returncode, 0, r.stderr)
+        self.assertIn("already up to date", r.stdout)
+        self.assertEqual(after, self.current)
+
+    def test_new_version_replaces_file(self):
+        newer = self.current.replace(b'VERSION = "%s"' % sonar.VERSION.encode(), b'VERSION = "9.9.9"', 1)
+        r, after = self.update(newer)
+        self.assertEqual(r.returncode, 0, r.stderr)
+        self.assertIn("-> 9.9.9", r.stdout)
+        self.assertEqual(after, newer)
+        v = subprocess.run([sys.executable, self.installed, "-V"], capture_output=True, text=True)
+        self.assertIn("9.9.9", v.stdout)
+
+    def test_broken_download_is_refused(self):
+        for bad in (b"<html>404: Not Found</html>", self.current[: len(self.current) // 2]):
+            r, after = self.update(bad)
+            self.assertEqual(r.returncode, 1)
+            self.assertIn("nothing was changed", r.stderr)
+            self.assertEqual(after, self.current)
+
+    def test_git_clone_is_left_alone(self):
+        os.makedirs(os.path.join(self.d, "bin", ".git"))
+        r, after = self.update(b"whatever")
+        self.assertEqual(r.returncode, 1)
+        self.assertIn("git pull", r.stdout)
+        self.assertEqual(after, self.current)
 
 
 @windows_only
