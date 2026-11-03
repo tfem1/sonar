@@ -1,0 +1,51 @@
+name: tests
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+env:
+  PYTHONIOENCODING: utf-8
+
+jobs:
+  test:
+    name: ${{ matrix.os }} · python ${{ matrix.python }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+        python: ["3.9", "3.13"]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python }}
+      - name: Install test-only dependency (terminal emulator for the pty tests)
+        if: runner.os == 'Linux'
+        run: pip install pyte
+      - name: Tests
+        run: python tests/test_sonar.py
+      - name: Snapshot (--once)
+        shell: bash
+        env:
+          COLUMNS: "100"
+          LINES: "30"
+        run: |
+          python sonar.py --once --no-color > snapshot.txt
+          cat snapshot.txt
+          python -c "import sys; t=open('snapshot.txt',encoding='utf-8').read(); print('::notice title=snapshot ${{ matrix.os }} py${{ matrix.python }}::' + t.replace('%','%25').replace('\n','%0A'))"
+      - name: Install script (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          ./install.ps1
+          & "$env:LOCALAPPDATA\Programs\sonar\sonar.cmd" -V
+          ./install.ps1 -Uninstall
+      - name: Install script (Linux)
+        if: runner.os == 'Linux'
+        run: |
+          ./install.sh
+          ~/.local/bin/sonar -V
+          ./install.sh --uninstall
