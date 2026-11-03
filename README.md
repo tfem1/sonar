@@ -2,7 +2,7 @@
 
 Minimal system monitor for the Linux and Windows terminal, in the spirit of
 htop / btop but quieter. It belongs to the same family as **waves** (system
-fetch) and **tsunami** (terminal), and uses the same look and the same 40 themes.
+fetch) and **tsunami** (terminal), and uses the same look and the same themes.
 
 ![sonar at 120×36](docs/screenshot-120x36.png)
 
@@ -21,26 +21,70 @@ fetch) and **tsunami** (terminal), and uses the same look and the same 40 themes
 
 ## Install
 
-It needs Python 3.9 or newer (tested on 3.9 and 3.13).
+sonar needs **Python 3.9 or newer** (tested on 3.9 and 3.13). Neither installer
+needs root or administrator rights. Every method below is run by CI on each push.
 
-**Linux**
+### Linux
+
+One line, no git needed:
 
 ```sh
-git clone https://github.com/tfem1/sonar && cd sonar
-./install.sh            # copies sonar.py to ~/.local/bin/sonar
-./install.sh --uninstall
+curl -fsSL https://raw.githubusercontent.com/tfem1/sonar/main/install.sh | sh
 ```
 
-**Windows 10 / 11** (Windows Terminal recommended)
+Or with git:
+
+```sh
+git clone https://github.com/tfem1/sonar
+cd sonar
+./install.sh
+```
+
+Either way, sonar ends up in `~/.local/bin/sonar`; run it with `sonar`. If the
+installer says `~/.local/bin` is not in your PATH, add
+`export PATH="$HOME/.local/bin:$PATH"` to `~/.bashrc` or `~/.zshrc`.
+
+To uninstall: `./install.sh --uninstall`, or
+`curl -fsSL https://raw.githubusercontent.com/tfem1/sonar/main/install.sh | sh -s -- --uninstall`.
+
+### Windows 10 / 11
+
+One line in PowerShell, no git needed:
 
 ```powershell
-git clone https://github.com/tfem1/sonar; cd sonar
-powershell -ExecutionPolicy Bypass -File install.ps1             # %LOCALAPPDATA%\Programs\sonar + user PATH
-powershell -ExecutionPolicy Bypass -File install.ps1 -Uninstall
+irm https://raw.githubusercontent.com/tfem1/sonar/main/install.ps1 | iex
 ```
 
-Neither installer needs root or administrator rights. You can also run it in
-place with `python sonar.py`.
+Or with git ([Git for Windows](https://git-scm.com/download/win), or `winget install Git.Git`):
+
+```powershell
+git clone https://github.com/tfem1/sonar
+cd sonar
+powershell -ExecutionPolicy Bypass -File install.ps1
+```
+
+sonar is installed in `%LOCALAPPDATA%\Programs\sonar` and added to your user
+PATH; run it with `sonar` (open a new terminal first). Windows Terminal is
+recommended. If Python is missing, the installer tells you how to get it
+(`winget install Python.Python.3.13`).
+
+To uninstall: `powershell -ExecutionPolicy Bypass -File install.ps1 -Uninstall`.
+
+### Without git or an installer
+
+Download the [ZIP](https://github.com/tfem1/sonar/archive/refs/heads/main.zip),
+extract it, and run `install.sh` (Linux) or `install.ps1` (Windows) from the
+extracted folder. You can also skip installing and just run `python3 sonar.py`
+(or `py sonar.py` on Windows).
+
+### If `git clone` fails
+
+| message | fix |
+|---|---|
+| `git: command not found` / `'git' is not recognized` | install git, or use the one-line install above |
+| `destination path 'sonar' already exists` | a `sonar` folder is already there: `cd sonar && git pull`, or clone elsewhere |
+| `The token '&&' is not a valid statement separator` | Windows PowerShell 5 has no `&&`: run the commands one per line |
+| `Permission denied` on `./install.sh` | run `sh install.sh` |
 
 ### Windows differences
 
@@ -131,9 +175,21 @@ sonar [-t THEME] [-l] [-c] [-i SECONDS] [--no-color] [--once] [-V]
 
 ## Themes
 
-sonar uses the theme table shared by waves and tsunami: 40 themes in four
-categories (**sea**, **gradient**, **mono**, **light**). Each theme has three
-accent colors that drive all the gradients (graphs, bars, values).
+sonar uses the theme table shared by waves and tsunami: 50 themes in five
+categories. Each theme has three accent colors that drive all the gradients
+(graphs, bars, values).
+
+| category | themes |
+|---|---|
+| **sea** | tsunami, abyss, lagoon, reef, tide, coral, kelp, storm, harbor, riptide |
+| **gradient** | aurora, sunset, ember, neon, vapor, citrus, berry, nebula, dusk, peach |
+| **vivid** (three clearly different hues) | prism, tropic, carnival, volcano, synthwave, spring, arcade, traffic, galaxy, parrot |
+| **mono** (one hue) | ink, slate, mint, amber, rose, ice, lime, violet, copper, cobalt |
+| **light** (for light backgrounds) | paper, foam, shell, linen, mist, blossom, meadow, sky, lavender, dune |
+
+Run `sonar -l` to see them all with color swatches.
+
+![sonar with the vivid theme "prism"](docs/screenshot-prism.png)
 
 The theme is picked in this order:
 

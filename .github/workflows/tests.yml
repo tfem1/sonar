@@ -36,16 +36,77 @@ jobs:
           python sonar.py --once --no-color > snapshot.txt
           cat snapshot.txt
           python -c "import sys; t=open('snapshot.txt',encoding='utf-8').read(); print('::notice title=snapshot ${{ matrix.os }} py${{ matrix.python }}::' + t.replace('%','%25').replace('\n','%0A'))"
-      - name: Install script (Windows)
+
+  # Every install method from the README, run exactly as a user would.
+  install:
+    name: install · ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    steps:
+      - name: Linux · git clone + ./install.sh
+        if: runner.os == 'Linux'
+        run: |
+          cd "$RUNNER_TEMP"
+          git clone https://github.com/tfem1/sonar && cd sonar
+          git checkout -q "$GITHUB_SHA"
+          ./install.sh
+          sonar -V
+          sonar --once --no-color | head -3
+          ./install.sh --uninstall
+      - name: Linux · one-line install (curl | sh)
+        if: runner.os == 'Linux'
+        run: |
+          cd "$RUNNER_TEMP"
+          curl -fsSL "https://raw.githubusercontent.com/tfem1/sonar/$GITHUB_SHA/install.sh" | SONAR_REF="$GITHUB_SHA" sh
+          sonar -V
+          curl -fsSL "https://raw.githubusercontent.com/tfem1/sonar/$GITHUB_SHA/install.sh" | sh -s -- --uninstall
+          test ! -e ~/.local/bin/sonar
+      - name: Linux · ZIP download + sh install.sh
+        if: runner.os == 'Linux'
+        run: |
+          cd "$RUNNER_TEMP"
+          curl -fsSL -o sonar.zip "https://github.com/tfem1/sonar/archive/$GITHUB_SHA.zip"
+          unzip -q sonar.zip -d zip && cd zip/sonar-*
+          sh install.sh
+          sonar -V
+          sh install.sh --uninstall
+
+      - name: Windows PowerShell 5.1 · git clone + install.ps1
+        if: runner.os == 'Windows'
+        shell: powershell
+        run: |
+          cd $env:RUNNER_TEMP
+          git clone https://github.com/tfem1/sonar; cd sonar
+          git checkout -q $env:GITHUB_SHA
+          powershell -ExecutionPolicy Bypass -File install.ps1
+          if ($LASTEXITCODE) { exit 1 }
+          & "$env:LOCALAPPDATA\Programs\sonar\sonar.cmd" -V
+          if ($LASTEXITCODE) { exit 1 }
+          powershell -ExecutionPolicy Bypass -File install.ps1 -Uninstall
+          if (Test-Path "$env:LOCALAPPDATA\Programs\sonar") { throw "uninstall left files" }
+      - name: Windows PowerShell 5.1 · one-line install (irm | iex)
+        if: runner.os == 'Windows'
+        shell: powershell
+        run: |
+          $env:SONAR_REF = $env:GITHUB_SHA
+          irm "https://raw.githubusercontent.com/tfem1/sonar/$env:GITHUB_SHA/install.ps1" | iex
+          sonar -V
+          if ($LASTEXITCODE) { exit 1 }
+          $env:SONAR_UNINSTALL = 1
+          irm "https://raw.githubusercontent.com/tfem1/sonar/$env:GITHUB_SHA/install.ps1" | iex
+          if (Test-Path "$env:LOCALAPPDATA\Programs\sonar") { throw "uninstall left files" }
+      - name: PowerShell 7 · ZIP download + install.ps1
         if: runner.os == 'Windows'
         shell: pwsh
         run: |
-          ./install.ps1
-          & "$env:LOCALAPPDATA\Programs\sonar\sonar.cmd" -V
-          ./install.ps1 -Uninstall
-      - name: Install script (Linux)
-        if: runner.os == 'Linux'
-        run: |
-          ./install.sh
-          ~/.local/bin/sonar -V
-          ./install.sh --uninstall
+          cd $env:RUNNER_TEMP
+          Invoke-WebRequest "https://github.com/tfem1/sonar/archive/$env:GITHUB_SHA.zip" -OutFile sonar.zip
+          Expand-Archive sonar.zip -DestinationPath zip
+          $src = Get-ChildItem zip -Directory | Select-Object -First 1
+          & powershell -ExecutionPolicy Bypass -File (Join-Path $src.FullName install.ps1)
+          if ($LASTEXITCODE) { exit 1 }
+          & "$env:LOCALAPPDATA\Programs\sonar\sonar.cmd" --once --no-color
+          if ($LASTEXITCODE) { exit 1 }
