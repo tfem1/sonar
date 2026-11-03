@@ -77,9 +77,9 @@ class Session:
                 return status
         return None
 
-    def html(self, title="sonar"):
+    def html(self, title="sonar", light=False):
         """Render the emulated screen (with truecolor) as an HTML <pre>."""
-        default_fg, default_bg = "#d8dee9", "#10121a"
+        default_fg, default_bg = ("#1f2328", "#f8f8f6") if light else ("#d8dee9", "#10121a")
 
         def col(c, fallback):
             if c in ("default", None):
