@@ -2,8 +2,6 @@
 
 Minimal system monitor for the Linux and Windows terminal.
 
-![sonar](docs/tsunami.png)
-
 ## Install
 
 You need Python 3.9 or newer.
@@ -36,48 +34,41 @@ No git? Download the [ZIP](https://github.com/tfem1/sonar/archive/refs/heads/mai
 
 </details>
 
-## Usage
+## How to use
 
-```sh
-sonar              # start
-sonar -t volcano   # pick a theme
-sonar -l           # list themes
-```
+**Start:** type `sonar`. Press `q` to quit.
 
-| key | action |
+**Change the colors:** press `c`.
+- `←` `→` to try themes (the screen changes live)
+- `Tab` to switch group: sea, gradient, vivid, mono, light
+- `Enter` to keep the theme, `Esc` to cancel
+
+You can also start with a theme directly: `sonar -t volcano`.
+`sonar -l` lists all 50 themes.
+
+**Processes:**
+- `↑` `↓` to select one
+- `/` to search by name, `Esc` to clear the search
+- `x` then `y` to kill the selected process
+- `s` to change the sort (cpu, mem, pid, name, time)
+- `t` for the tree view, `u` for only your processes
+
+**Screen:**
+- `1` to `5` show or hide the cpu, mem, net, temps and disks panels
+- `+` / `-` refresh faster or slower
+- `p` pauses
+
+Press `?` anytime to see all the keys.
+
+## Gallery
+
+| | |
 |---|---|
-| `↑` `↓` or `j` `k` | select a process |
-| `x` | kill the selected process (asks y/n) |
-| `/` | filter by name |
-| `s` / `r` | change sort / reverse it |
-| `t` | tree view |
-| `u` | only my processes |
-| `1` … `5` | show / hide a panel |
-| `+` / `-` | refresh faster / slower |
-| `p` | pause |
-| `c` | choose a theme |
-| `?` | help |
-| `q` | quit |
-
-| help `?` | filter `/` | tree `t` |
-|---|---|---|
-| ![help](docs/help.png) | ![filter](docs/filter.png) | ![tree](docs/tree.png) |
-
-## Themes
-
-50 themes. Press `c` to try them live, then `Enter` to keep one.
-
-![theme picker](docs/picker.png)
-
-| volcano | synthwave |
-|---|---|
-| ![volcano](docs/volcano.png) | ![synthwave](docs/synthwave.png) |
-| **prism** | **aurora** |
-| ![prism](docs/prism.png) | ![aurora](docs/aurora.png) |
-
-Light themes for light terminals, here `sky`:
-
-![sky](docs/sky.png)
+| ![tsunami](docs/tsunami.png) **tsunami** (default) | ![theme picker](docs/picker.png) **theme picker** `c` |
+| ![volcano](docs/volcano.png) **volcano** | ![synthwave](docs/synthwave.png) **synthwave** |
+| ![prism](docs/prism.png) **prism** | ![aurora](docs/aurora.png) **aurora** |
+| ![sky](docs/sky.png) **sky** (light) | ![help](docs/help.png) **help** `?` |
+| ![filter](docs/filter.png) **search** `/` | ![tree](docs/tree.png) **tree view** `t` |
 
 ## License
 
