@@ -33,8 +33,10 @@ else:
     import termios
     import tty
 
-VERSION = "1.1.0"
+VERSION = "1.2.0"
 UPDATE_URL = "https://raw.githubusercontent.com/tfem1/sonar/main/sonar.py"
+RELEASE_API = "https://api.github.com/repos/tfem1/sonar/releases/latest"  # sonar.exe (Windows build)
+FROZEN = bool(getattr(sys, "frozen", False))  # running as the standalone sonar.exe
 
 # ── themes:begin ──
 # Shared theme table (waves / tsunami / sonar).
@@ -2564,11 +2566,83 @@ def snapshot(app):
     sys.stdout.flush()
 
 
-def self_update():
-    """--update: replace this file with the latest sonar.py from GitHub."""
-    import hashlib
+def _fetch(url, timeout=30):
     import urllib.request
+    req = urllib.request.Request(url, headers={"User-Agent": "sonar/" + VERSION, "Cache-Control": "no-cache",
+                                               "Accept": "application/vnd.github+json, */*"})
+    with urllib.request.urlopen(req, timeout=timeout) as r:
+        return r.read()
 
+
+def _version_tuple(v):
+    return tuple(int(x) for x in re.findall(r"\d+", v)[:3])
+
+
+def update_exe():
+    """--update for sonar.exe: install the newest GitHub release next to itself."""
+    import subprocess
+
+    target = sys.executable
+    api = os.environ.get("SONAR_RELEASE_API", RELEASE_API)
+    print("checking %s" % api)
+    try:
+        rel = json.loads(_fetch(api).decode("utf-8"))
+    except Exception as e:  # network, DNS, TLS, HTTP, JSON errors
+        sys.stderr.write("sonar: cannot check for updates: %s\n" % e)
+        return 1
+    tag = str(rel.get("tag_name") or "")
+    asset = next((a for a in rel.get("assets") or () if str(a.get("name", "")).lower() == "sonar.exe"), None)
+    if not tag or not asset:
+        sys.stderr.write("sonar: the latest release has no sonar.exe, nothing was changed\n")
+        return 1
+    if _version_tuple(tag) <= _version_tuple(VERSION):
+        print("sonar %s is already up to date" % VERSION)
+        return 0
+    print("downloading sonar %s" % tag.lstrip("v"))
+    try:
+        data = _fetch(asset["browser_download_url"], timeout=180)
+    except Exception as e:
+        sys.stderr.write("sonar: download failed: %s\n" % e)
+        return 1
+    if not data.startswith(b"MZ") or len(data) < 1000000:
+        sys.stderr.write("sonar: the downloaded file is not a valid sonar.exe, nothing was changed\n")
+        return 1
+    new, old = target + ".new", target + ".old"
+    try:
+        with open(new, "wb") as f:
+            f.write(data)
+        check = subprocess.run([new, "-V"], capture_output=True, text=True, timeout=120)
+        if check.returncode != 0 or not check.stdout.startswith("sonar "):
+            raise ValueError
+    except (OSError, ValueError, subprocess.SubprocessError):
+        try:
+            os.remove(new)
+        except OSError:
+            pass
+        sys.stderr.write("sonar: the downloaded sonar.exe does not start, nothing was changed\n")
+        return 1
+    try:
+        if os.path.exists(old):
+            os.remove(old)
+        os.replace(target, old)  # a running .exe can be renamed, not overwritten
+        try:
+            os.replace(new, target)
+        except OSError:
+            os.replace(old, target)
+            raise
+    except OSError as e:
+        sys.stderr.write("sonar: cannot replace %s: %s\n" % (target, e.strerror))
+        return 1
+    print("sonar updated: %s -> %s" % (VERSION, check.stdout.split()[-1]))
+    return 0
+
+
+def self_update():
+    """--update: replace this file with the latest sonar.py from GitHub (or the newest sonar.exe)."""
+    import hashlib
+
+    if FROZEN:
+        return update_exe()
     target = os.path.realpath(os.path.abspath(__file__))
     url = os.environ.get("SONAR_UPDATE_URL", UPDATE_URL)
     if os.path.isdir(os.path.join(os.path.dirname(target), ".git")):
@@ -2576,9 +2650,7 @@ def self_update():
         return 1
     print("checking %s" % url)
     try:
-        req = urllib.request.Request(url, headers={"User-Agent": "sonar/" + VERSION, "Cache-Control": "no-cache"})
-        with urllib.request.urlopen(req, timeout=20) as r:
-            new = r.read()
+        new = _fetch(url)
     except Exception as e:  # network, DNS, TLS, HTTP errors
         sys.stderr.write("sonar: download failed: %s\n" % e)
         return 1
@@ -2653,6 +2725,16 @@ def parse_args(argv):
 
 
 def main(argv=None):
+    for stream in (sys.stdout, sys.stderr):  # never crash on a non-UTF-8 pipe (e.g. `sonar -l | more`)
+        try:
+            stream.reconfigure(errors="replace")
+        except (AttributeError, ValueError):
+            pass
+    if FROZEN:  # leftover from a previous sonar.exe --update
+        try:
+            os.remove(sys.executable + ".old")
+        except OSError:
+            pass
     args = parse_args(sys.argv[1:] if argv is None else argv)
     if args.update:
         return self_update()

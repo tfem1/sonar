@@ -4,19 +4,20 @@ Minimal system monitor for the Linux and Windows terminal.
 
 ## Install
 
-You need Python 3.9 or newer.
-
-**Linux**
+**Linux** (Python 3.9+)
 
 ```sh
 curl -fsSL https://raw.githubusercontent.com/tfem1/sonar/main/install.sh | sh
 ```
 
-**Windows** (PowerShell)
+**Windows 10 / 11** (PowerShell, no Python needed)
 
 ```powershell
 irm https://raw.githubusercontent.com/tfem1/sonar/main/install.ps1 | iex
 ```
+
+Or download **[sonar.exe](https://github.com/tfem1/sonar/releases/latest/download/sonar.exe)** and run it.
+If Windows warns about an unknown app: *More info* → *Run anyway*.
 
 Then open a new terminal and type `sonar`.
 

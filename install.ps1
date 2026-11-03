@@ -1,4 +1,6 @@
 # Install sonar for the current Windows user (no administrator rights needed).
+# With Python 3.9+ it installs sonar.py; without Python it installs the standalone sonar.exe
+# (set SONAR_EXE=1 to always use sonar.exe).
 #
 #   Without git, in one line (PowerShell):
 #       irm https://raw.githubusercontent.com/tfem1/sonar/main/install.ps1 | iex
@@ -43,30 +45,46 @@ $SonarScriptRoot = $PSScriptRoot  # empty when run through iex
         & python -c "import sys; sys.exit(sys.version_info < (3, 9))" 2>$null
         if ($LASTEXITCODE -eq 0) { $Python = "python" }
     }
-    if (-not $Python) {
-        throw "Python 3.9+ is required. Install it with:  winget install Python.Python.3.13  (or from https://www.python.org/downloads/windows/), then open a new terminal and run this again."
-    }
+    $UseExe = ($env:SONAR_EXE -eq "1") -or (-not $Python)
 
     $ErrorActionPreference = "Stop"
+    [Net.ServicePointManager]::SecurityProtocol = [Net.ServicePointManager]::SecurityProtocol -bor [Net.SecurityProtocolType]::Tls12
     New-Item -ItemType Directory -Force -Path $Dir | Out-Null
-    $Dest = Join-Path $Dir "sonar.py"
 
-    # Use the sonar.py next to this script (clone / ZIP); when run through iex, download it.
-    $Local = if ($SonarScriptRoot) { Join-Path $SonarScriptRoot "sonar.py" } else { $null }
-    if ($Local -and (Test-Path $Local)) {
-        Copy-Item -Force $Local $Dest
+    if ($UseExe) {
+        # standalone build from the GitHub releases: no Python needed
+        if (-not $Python) { Write-Host "Python not found: installing the standalone sonar.exe" }
+        $Exe = Join-Path $Dir "sonar.exe"
+        $ExeUrl = if ($env:SONAR_EXE_URL) { $env:SONAR_EXE_URL } else { "https://github.com/$Repo/releases/latest/download/sonar.exe" }
+        if ($ExeUrl -notmatch '^https?://') {
+            Copy-Item -Force $ExeUrl $Exe
+        } else {
+            Write-Host "downloading $ExeUrl"
+            Invoke-WebRequest -UseBasicParsing -Uri $ExeUrl -OutFile $Exe
+        }
+        foreach ($f in "sonar.py", "sonar.cmd") { Remove-Item -Force -ErrorAction SilentlyContinue (Join-Path $Dir $f) }
+        $Version = & $Exe -V
+        if ($LASTEXITCODE -ne 0) { throw "sonar.exe does not start: $Version" }
     } else {
-        $Url = "https://raw.githubusercontent.com/$Repo/$Ref/sonar.py"
-        Write-Host "downloading $Url"
-        [Net.ServicePointManager]::SecurityProtocol = [Net.ServicePointManager]::SecurityProtocol -bor [Net.SecurityProtocolType]::Tls12
-        Invoke-WebRequest -UseBasicParsing -Uri $Url -OutFile $Dest
+        $Dest = Join-Path $Dir "sonar.py"
+
+        # Use the sonar.py next to this script (clone / ZIP); when run through iex, download it.
+        $Local = if ($SonarScriptRoot) { Join-Path $SonarScriptRoot "sonar.py" } else { $null }
+        if ($Local -and (Test-Path $Local)) {
+            Copy-Item -Force $Local $Dest
+        } else {
+            $Url = "https://raw.githubusercontent.com/$Repo/$Ref/sonar.py"
+            Write-Host "downloading $Url"
+            Invoke-WebRequest -UseBasicParsing -Uri $Url -OutFile $Dest
+        }
+
+        $Shim = Join-Path $Dir "sonar.cmd"
+        Set-Content -Encoding ASCII -Path $Shim -Value "@echo off`r`n$Python `"%~dp0sonar.py`" %*"
+
+        $Version = & cmd /c "`"$Shim`" -V"
+        if ($LASTEXITCODE -ne 0) { throw "sonar does not start: $Version" }
+        Remove-Item -Force -ErrorAction SilentlyContinue (Join-Path $Dir "sonar.exe")
     }
-
-    $Shim = Join-Path $Dir "sonar.cmd"
-    Set-Content -Encoding ASCII -Path $Shim -Value "@echo off`r`n$Python `"%~dp0sonar.py`" %*"
-
-    $Version = & cmd /c "`"$Shim`" -V"
-    if ($LASTEXITCODE -ne 0) { throw "sonar does not start: $Version" }
 
     if (-not ($Parts | Where-Object { $_.TrimEnd("\") -eq $Dir })) {
         [Environment]::SetEnvironmentVariable("Path", (($Parts + $Dir) -join ";"), "User")
