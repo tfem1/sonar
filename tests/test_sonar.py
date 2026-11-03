@@ -34,9 +34,9 @@ def lines_fit(sess):
 
 class Unit(unittest.TestCase):
     def test_theme_table(self):
-        self.assertEqual(len(sonar.TABLE), 40)
+        self.assertEqual(len(sonar.TABLE), 50)
         cats = dict(sonar.theme_categories())
-        self.assertEqual(sorted(cats), ["gradient", "light", "mono", "sea"])
+        self.assertEqual(sorted(cats), ["gradient", "light", "mono", "sea", "vivid"])
         self.assertTrue(all(len(v) == 10 for v in cats.values()))
         self.assertIn("tsunami", sonar.TABLE)
 
@@ -167,14 +167,14 @@ class Live(unittest.TestCase):
             s.close()
 
     def test_kill_sleep_and_restore(self):
-        victim = subprocess.Popen(["sleep", "1000"])
+        victim = subprocess.Popen(["sleep", "7771"])
         s = Session(100, 30)
         try:
             s.pump(1.5)
-            s.send("/sleep")
-            self.assertIn("filter › sleep", s.text())
+            s.send("/sleep 7771")
+            self.assertIn("filter › sleep 7771", s.text())
             s.send("\r", 0.6)
-            self.assertIn("sleep 1000", s.text())
+            self.assertIn("sleep 7771", s.text())
             s.send("x", 0.4)
             last = s.text().splitlines()[-1]
             self.assertIn("kill sleep (%d)? SIGTERM" % victim.pid, last)
@@ -198,11 +198,11 @@ class Live(unittest.TestCase):
             s.close()
 
     def test_sigkill_and_permission_denied(self):
-        victim = subprocess.Popen(["sleep", "999"])
+        victim = subprocess.Popen(["sleep", "7772"])
         s = Session(100, 30)
         try:
             s.pump(1.5)
-            s.send("/sleep 999\r", 0.6)
+            s.send("/sleep 7772\r", 0.6)
             s.send("X", 0.3)
             self.assertIn("SIGKILL", s.text().splitlines()[-1])
             s.send("n", 0.3)
@@ -264,9 +264,9 @@ class Live(unittest.TestCase):
                 self.assertIn("‹  aurora  ›", s.text())
                 s.send("\x1b", 0.3)          # cancel: back to tsunami, nothing saved
                 self.assertFalse(os.path.exists(os.path.join(d, "sonar", "config")))
-                s.send("c\t\t\x1b[C\r", 0.5)  # mono → 2nd theme, save
+                s.send("c\t\t\x1b[C\r", 0.5)  # vivid → 2nd theme, save
                 self.assertIn("saved", s.text())
-                self.assertEqual(sonar.theme_from_file(os.path.join(d, "sonar", "config")), "slate")
+                self.assertEqual(sonar.theme_from_file(os.path.join(d, "sonar", "config")), "tropic")
             finally:
                 s.send("q", 0.2)
                 s.wait_exit()

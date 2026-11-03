@@ -84,11 +84,22 @@ THEMES = {
     "sky":      ("light", "#93c5fd", "#2563eb", "#1e3a8a"),
     "lavender": ("light", "#c4b5fd", "#7c3aed", "#4c1d95"),
     "dune":     ("light", "#fcd34d", "#d97706", "#78350f"),
+    # vivid — three clearly different hues per theme
+    "prism":    ("vivid", "#3a86ff", "#8338ec", "#ff006e"),
+    "tropic":   ("vivid", "#06d6a0", "#ffd166", "#ef476f"),
+    "carnival": ("vivid", "#00bbf9", "#fee440", "#f15bb5"),
+    "volcano":  ("vivid", "#2ec4b6", "#ff9f1c", "#e71d36"),
+    "synthwave": ("vivid", "#2de2e6", "#f6019d", "#ff6c11"),
+    "spring":   ("vivid", "#70e000", "#ffd60a", "#ff5d8f"),
+    "arcade":   ("vivid", "#00f5d4", "#9b5de5", "#fee440"),
+    "traffic":  ("vivid", "#38b000", "#ffbe0b", "#fb5607"),
+    "galaxy":   ("vivid", "#4cc9f0", "#b5179e", "#f8961e"),
+    "parrot":   ("vivid", "#00a6fb", "#7ae582", "#ff4d6d"),
 }
 # ── themes:end ──
 
 DEFAULT_THEME = "tsunami"
-CATEGORY_ORDER = ("sea", "gradient", "mono", "light")
+CATEGORY_ORDER = ("sea", "gradient", "vivid", "mono", "light")
 
 
 # ═════════════════════════════════════════════════════════════════════════════
