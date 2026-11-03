@@ -41,6 +41,8 @@ jobs:
   install:
     name: install · ${{ matrix.os }}
     runs-on: ${{ matrix.os }}
+    env:
+      SHELL: /bin/bash
     strategy:
       fail-fast: false
       matrix:
@@ -53,15 +55,14 @@ jobs:
           git clone https://github.com/tfem1/sonar && cd sonar
           git checkout -q "$GITHUB_SHA"
           ./install.sh
-          sonar -V
-          sonar --once --no-color | head -3
+          bash -ic 'sonar -V && sonar --once --no-color | head -3'
           ./install.sh --uninstall
       - name: Linux · one-line install (curl | sh)
         if: runner.os == 'Linux'
         run: |
           cd "$RUNNER_TEMP"
           curl -fsSL "https://raw.githubusercontent.com/tfem1/sonar/$GITHUB_SHA/install.sh" | SONAR_REF="$GITHUB_SHA" sh
-          sonar -V
+          bash -ic 'sonar -V'
           curl -fsSL "https://raw.githubusercontent.com/tfem1/sonar/$GITHUB_SHA/install.sh" | sh -s -- --uninstall
           test ! -e ~/.local/bin/sonar
       - name: Linux · ZIP download + sh install.sh
@@ -71,7 +72,7 @@ jobs:
           curl -fsSL -o sonar.zip "https://github.com/tfem1/sonar/archive/$GITHUB_SHA.zip"
           unzip -q sonar.zip -d zip && cd zip/sonar-*
           sh install.sh
-          sonar -V
+          bash -ic 'sonar -V'
           sh install.sh --uninstall
 
       - name: Windows PowerShell 5.1 · git clone + install.ps1

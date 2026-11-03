@@ -16,6 +16,11 @@ die() { printf 'error: %s\n' "$*" >&2; exit 1; }
 
 if [ "${1:-}" = "--uninstall" ]; then
     rm -f "$TARGET"
+    for rc in "$HOME/.bashrc" "$HOME/.zshrc" "$HOME/.profile"; do
+        if grep -qs "# added by sonar" "$rc"; then
+            grep -v "# added by sonar" "$rc" > "$rc.sonar-tmp" && mv "$rc.sonar-tmp" "$rc"
+        fi
+    done
     say "sonar removed from $TARGET"
     exit 0
 fi
@@ -31,7 +36,7 @@ case "$0" in
 esac
 
 TMP=""
-cleanup() { [ -n "$TMP" ] && rm -f "$TMP"; }
+cleanup() { if [ -n "$TMP" ]; then rm -f "$TMP"; fi; }
 trap cleanup EXIT INT TERM
 
 if [ -z "$SRC" ]; then
@@ -56,8 +61,22 @@ chmod 755 "$TARGET"
 say "$(python3 "$TARGET" -V) installed to $TARGET"
 
 case ":$PATH:" in
-    *":$BIN_DIR:"*) say "run it with: sonar" ;;
-    *) say "note: $BIN_DIR is not in your PATH; add this line to ~/.bashrc or ~/.zshrc:"
-       say "      export PATH=\"\$HOME/.local/bin:\$PATH\""
-       say "or run it directly: $TARGET" ;;
+    *":$BIN_DIR:"*)
+        say "run it with: sonar" ;;
+    *)
+        # put ~/.local/bin on the PATH of the user's shell (once); SONAR_NO_PATH=1 skips this
+        case "${SHELL:-}" in
+            */zsh)  RC="$HOME/.zshrc" ;;
+            */bash) RC="$HOME/.bashrc" ;;
+            */fish) RC="" ; say "fish: run  fish_add_path $BIN_DIR" ;;
+            *)      RC="$HOME/.profile" ;;
+        esac
+        if [ -n "$RC" ] && [ -z "${SONAR_NO_PATH:-}" ]; then
+            if ! grep -qs "# added by sonar" "$RC"; then
+                printf '\nexport PATH="%s:$PATH"  # added by sonar\n' "$BIN_DIR" >> "$RC"
+                say "added $BIN_DIR to your PATH in $RC"
+            fi
+            say "open a new terminal (or run: . $RC), then: sonar"
+        fi
+        say "or run it directly: $TARGET" ;;
 esac
